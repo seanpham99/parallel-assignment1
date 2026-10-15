@@ -169,27 +169,35 @@ def main() -> int:
 
     # ---- Task 4: MPI (optional) ----
     mpirun = shutil.which("mpirun") or shutil.which("mpiexec")
+    # OpenMPI's PRRTE defaults slots to physical cores; --use-hwthread-cpus
+    # lets -np 4 run on a 2-core/4-HT machine. MPICH/IntelMPI don't need it.
+    mpi_extra = []
+    if mpirun:
+        v = subprocess.run([mpirun, "--version"], capture_output=True,
+                           text=True).stdout
+        if "Open MPI" in v:
+            mpi_extra = ["--use-hwthread-cpus"]
     want4 = args.only in (None, "task4")
     if want4 and not args.skip_mpi and mpirun and os.path.exists(exe("bench_mpi")):
         print("== task4: MPI ==")
         for np_ in [1, 2, 4]:
             for _ in range(reps):
                 p = subprocess.Popen(
-                    [mpirun, "-np", str(np_), exe("bench_mpi"),
+                    [mpirun, *mpi_extra, "-np", str(np_), exe("bench_mpi"),
                      "--mode=counter", "--iterations=20000",
                      f"--platform={plat}"],
                     stdout=subprocess.PIPE, text=True)
                 collect(p, out)
             for _ in range(reps):
                 p = subprocess.Popen(
-                    [mpirun, "-np", str(np_), exe("bench_mpi"),
+                    [mpirun, *mpi_extra, "-np", str(np_), exe("bench_mpi"),
                      "--mode=lock", "--iterations=2000",
                      f"--platform={plat}"],
                     stdout=subprocess.PIPE, text=True)
                 collect(p, out)
             for _ in range(reps):
                 p = subprocess.Popen(
-                    [mpirun, "-np", str(np_), exe("bench_mpi"),
+                    [mpirun, *mpi_extra, "-np", str(np_), exe("bench_mpi"),
                      "--mode=barrier", "--episodes=20000",
                      f"--platform={plat}"],
                     stdout=subprocess.PIPE, text=True)
