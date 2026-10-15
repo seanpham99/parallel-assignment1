@@ -24,6 +24,21 @@ cmake --build build -j
 
 MPI is optional: `bench_mpi` builds only if `find_package(MPI)` succeeds.
 
+### macOS note: MPI without Homebrew/MacPorts
+
+Homebrew refuses Intel Macs; `port install openmpi-clang16` builds gcc15
+(Fortran) from source — hours. Task 4 needs only the C API, so this machine
+uses a source build instead:
+
+```bash
+curl -LO https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.9.tar.gz
+tar xzf openmpi-5.0.9.tar.gz && cd openmpi-5.0.9
+./configure --prefix=$HOME/opt/openmpi --disable-mpi-fortran \
+    --disable-oshmem --without-ofi --without-ucx --without-verbs
+make -j2 && make install        # ~25 min
+export PATH=$HOME/opt/openmpi/bin:$PATH
+```
+
 ## Run everything (correctness tests + benchmarks → CSV)
 
 ```bash
