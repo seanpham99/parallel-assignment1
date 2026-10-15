@@ -1,0 +1,4 @@
+build/
+plots/
+__pycache__/
+# results/ IS committed: teammates push their CSVs here.
