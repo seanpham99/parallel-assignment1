@@ -43,7 +43,7 @@ except ImportError:
 
 def medians(task, metric, key="threads"):
     """{(platform, alg, outside): {threads: median(value)}}"""
-    groups = defaultdict(list)
+    groups = defaultdict(lambda: defaultdict(list))
     for r in rows:
         if int(r["task"]) == task and r["metric"] == metric:
             k = (r["platform"], r["algorithm"], r["outside_work"])

@@ -110,10 +110,21 @@ def main() -> int:
     if not append:
         out.write(CSV_HEADER + "\n")
 
-    def bench(binary, extra):
+    def bench(binary, extra, timeout_s=120):
         cmd = [exe(binary)] + extra + ["--reps=1", f"--platform={plat}"]
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
-        collect(p, out)
+        try:
+            p.wait(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            print(f"  TIMEOUT {timeout_s}s: {' '.join(extra)}",
+                  file=sys.stderr)
+        for line in p.stdout:
+            if line.startswith("verify"):
+                sys.stderr.write(line)
+            else:
+                out.write(line)
+        out.flush()
 
     # ---- Task 1: locks ----
     # Keep total critical sections ~constant across thread counts: iters scale.
@@ -132,9 +143,12 @@ def main() -> int:
     # ---- Task 2: barrier ----
     if args.only in (None, "task2"):
         print("== task2: barrier ==")
-        episodes = 20000 if not args.quick else 2000
         for alg in BARRIER_ALGS:
             for t in THREADS:
+                # Episodes scaled so even convoyed oversubscribed configs
+                # finish inside the runner timeout: at t=8/16 on a 4-HT
+                # machine a preempted arriver can stall an episode ~10-20ms.
+                episodes = max(800, (8000 if not args.quick else 1000) // t)
                 for _ in range(reps):
                     bench("bench_barrier",
                           [f"--algorithm={alg}", f"--threads={t}",

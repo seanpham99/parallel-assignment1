@@ -1,4 +1,7 @@
 // Task 2 benchmark: barrier episodes per second, zero useful work between.
+// No in-process early-stop: a stopped thread never arrives, deadlocking
+// siblings inside arrive(). Oversubscribed reps are bounded by the runner's
+// subprocess timeout instead.
 // Usage: bench_barrier --algorithm=<srb|srb_backoff|pthread_barrier|std_barrier>
 //        --threads=N --episodes=E --reps=R --platform=P
 #include "common.h"
@@ -24,7 +27,7 @@ double run_once(Barrier& bar, int threads, int episodes) {
 }
 
 #ifdef HAVE_PTHREAD_BARRIER
-double run_once_pthread(PthreadBarrier& bar, int threads, int episodes) {
+double run_once_0arg(PthreadBarrier& bar, int threads, int episodes) {
     std::vector<std::thread> ts;
     double t0 = now_seconds();
     for (int i = 0; i < threads; i++)
@@ -35,6 +38,7 @@ double run_once_pthread(PthreadBarrier& bar, int threads, int episodes) {
     return now_seconds() - t0;
 }
 #endif
+
 double run_once_std(StdBarrier& bar, int threads, int episodes) {
     std::vector<std::thread> ts;
     double t0 = now_seconds();
@@ -59,12 +63,14 @@ int main(int argc, char** argv) {
         else if (alg == "srb_backoff") { SenseBarrierBackoff b(threads); dt = run_once(b, threads, episodes); }
         else if (alg == "std_barrier") { StdBarrier b(threads);          dt = run_once_std(b, threads, episodes); }
 #ifdef HAVE_PTHREAD_BARRIER
-        else if (alg == "pthread_barrier") { PthreadBarrier b(threads);  dt = run_once_pthread(b, threads, episodes); }
+        else if (alg == "pthread_barrier") { PthreadBarrier b(threads);  dt = run_once_0arg(b, threads, episodes); }
 #endif
         else { fprintf(stderr, "unknown algorithm: %s\n", alg.c_str()); return 2; }
 
         csv_row(platform, 2, alg, threads, 0, "episodes_per_sec",
                 episodes / dt, r);
+        csv_row(platform, 2, alg, threads, 0, "episodes_done",
+                (double)episodes, r);
         csv_row(platform, 2, alg, threads, 0, "wall_seconds", dt, r);
     }
     return 0;
