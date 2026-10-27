@@ -62,7 +62,8 @@ int main(int argc, char** argv) {
     int reps = get_iarg(argc, argv, "reps", 1);
     std::string platform = get_sarg(argc, argv, "platform", "unknown");
 
-    // Window of 2 ints on rank 0.
+    // Window of 2 ints on rank 0. Modes run in separate processes (see
+// run_benchmarks.py), so base[0] only accumulates within one mode/reps run.
     MPI_Win win;
     int* base = nullptr;
     MPI_Win_allocate(rank == 0 ? 2 * sizeof(int) : 0, sizeof(int),

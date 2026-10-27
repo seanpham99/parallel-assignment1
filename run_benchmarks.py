@@ -13,8 +13,6 @@ import platform as pf
 import shutil
 import subprocess
 import sys
-import csv
-import io
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
@@ -62,14 +60,17 @@ def exe(name: str) -> str:
     return os.path.join(BUILD, name + suffix)
 
 
-def collect(proc, out) -> int:
-    """Stream subprocess stdout: CSV rows -> file, verify lines -> stderr log."""
-    for line in proc.stdout:
-        if line.startswith(("verify",)):
-            sys.stderr.write(line)
-        else:
-            out.write(line)
-    return proc.wait()
+def collect(proc, out, timeout_s=120) -> int:
+    """Collect subprocess stdout: CSV rows -> file. Kill on timeout."""
+    try:
+        stdout, _ = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, _ = proc.communicate()
+        print(f"  TIMEOUT {timeout_s}s (mpi)", file=sys.stderr)
+    out.write(stdout)
+    out.flush()
+    return proc.returncode
 
 
 def main() -> int:
@@ -114,16 +115,13 @@ def main() -> int:
         cmd = [exe(binary)] + extra + ["--reps=1", f"--platform={plat}"]
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
         try:
-            p.wait(timeout=timeout_s)
+            stdout, _ = p.communicate(timeout=timeout_s)
         except subprocess.TimeoutExpired:
             p.kill()
+            stdout, _ = p.communicate()
             print(f"  TIMEOUT {timeout_s}s: {' '.join(extra)}",
                   file=sys.stderr)
-        for line in p.stdout:
-            if line.startswith("verify"):
-                sys.stderr.write(line)
-            else:
-                out.write(line)
+        out.write(stdout)
         out.flush()
 
     # ---- Task 1: locks ----

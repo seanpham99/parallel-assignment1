@@ -43,7 +43,7 @@ private:
 // ---------------- TTAS + exponential backoff ----------------
 class TTASBackoffLock {
 public:
-    explicit TTASBackoffLock(int max_delay = 1 << 16) : max_delay_(max_delay) {}
+    explicit TTASBackoffLock(int max_delay = 1 << 16) : max_delay_(max_delay < 1 ? 1 : max_delay) {}
 
     void lock() {
         int delay = 1;

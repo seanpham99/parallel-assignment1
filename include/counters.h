@@ -19,7 +19,7 @@ template <typename Lock>
 class GenericLockCounter {
 public:
     void add(long long d) { l_.lock(); v_ += d; l_.unlock(); }
-    long long get() { return v_; }
+    long long get() { l_.lock(); long long r = v_; l_.unlock(); return r; }
 private:
     Lock l_;
     long long v_ = 0;
@@ -40,7 +40,7 @@ private:
 
 class CASBackoffCounter {
 public:
-    explicit CASBackoffCounter(int max_delay = 1 << 14) : max_delay_(max_delay) {}
+    explicit CASBackoffCounter(int max_delay = 1 << 14) : max_delay_(max_delay < 1 ? 1 : max_delay) {}
     void add(long long d) {
         int delay = 1;
         long long cur = v_.load(std::memory_order_relaxed);
