@@ -9,12 +9,14 @@ endif()
 
 include_directories(include)
 
-if(WIN32)
+if(MSVC)
     # MSVC: no POSIX threads; pthread_* targets are compile-guarded out.
     add_compile_options(/O2)
 else()
     add_compile_options(-O2)
-    set(CMAKE_THREAD_LIBS_INIT "-pthread")
+    if(NOT CMAKE_THREAD_LIBS_INIT)
+        set(CMAKE_THREAD_LIBS_INIT "-pthread")
+    endif()
 endif()
 
 set(COMMON_LINK ${CMAKE_THREAD_LIBS_INIT})
